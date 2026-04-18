@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: white;
+            text-align: center;
+        }
+
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table {
+            margin: 20px auto;
+            width: 85%;
+            border-collapse: collapse;
+            background: #222;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #555;
+        }
+
+        th {
+            background: #333;
+        }
+
+        .alertBox {
+            width: 60%;
+            margin: 10px auto;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        #cpuAlert { border-left: 5px solid red; background: #2a1a1a; }
+        #memoryAlert { border-left: 5px solid orange; background: #2a241a; }
+        #diskAlert { border-left: 5px solid purple; background: #241a2a; }
+    </style>
+</head>
+
+<body>
+
+<h1>System Monitoring Dashboard</h1>
+
+<h2>Add / Edit System</h2>
+
+<form id="dataForm">
+    <input type="hidden" id="editId">
+
+    <input type="text" id="systemName" placeholder="System Name" required>
+    <input type="number" id="cpu" placeholder="CPU %" required>
+    <input type="number" id="memory" placeholder="Memory %" required>
+    <input type="number" id="disk" placeholder="Disk %" max="100" required>
+
+    <button type="submit">Submit</button>
+</form>
+
+<br>
+
+<button onclick="loadData()">Refresh Data</button>
+<button onclick="downloadCSV()" style="background:#2ecc71;">📄 Download CSV</button>
+
+<!-- ALERTS -->
+<div id="cpuAlert" class="alertBox"></div>
+<div id="memoryAlert" class="alertBox"></div>
+<div id="diskAlert" class="alertBox"></div>
+
+<h2>Total Systems: <span id="totalCount">0</span></h2>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>System</th>
+        <th>CPU</th>
+        <th>Memory</th>
+        <th>Disk</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<canvas id="cpuChart"></canvas>
+<canvas id="memoryChart"></canvas>
+<canvas id="diskChart"></canvas>
+
+<script>
+    let cpuChart, memoryChart, diskChart;
+    let systems = [];
+
+    // ADD / UPDATE
+    document.getElementById("dataForm").addEventListener("submit", async function(e) {
+        e.preventDefault();
+
+        const id = document.getElementById("editId").value;
+
+        const data = {
+            systemName: document.getElementById("systemName").value,
+            cpuUsage: parseFloat(document.getElementById("cpu").value),
+            memoryUsage: parseFloat(document.getElementById("memory").value),
+            diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
+            timestamp: Date.now()
+        };
+
+        if (id) {
+            await fetch(`http://localhost:8080/api/metrics/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            alert("Updated successfully");
+        } else {
+            await fetch(`http://localhost:8080/api/metrics`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            alert("Added successfully");
+        }
+
+        document.getElementById("editId").value = "";
+        document.getElementById("dataForm").reset(); // ✅ reset form
+        loadData();
+    });
+
+    // DELETE
+    async function deleteSystem(id) {
+        if (!confirm("Delete this system?")) return;
+
+        await fetch(`http://localhost:8080/api/metrics/${id}`, {
+            method: "DELETE"
+        });
+
+        loadData();
+    }
+
+    // ✅ EDIT (FIXED)
+    function editSystem(id) {
+
+        id = Number(id); // 🔥 FIX
+
+        const s = systems.find(x => x.id === id);
+
+        if (!s) {
+            alert("System not found!");
+            return;
+        }
+
+        document.getElementById("systemName").value = s.systemName;
+        document.getElementById("cpu").value = s.cpuUsage;
+        document.getElementById("memory").value = s.memoryUsage;
+        document.getElementById("disk").value = s.diskUsage;
+
+        document.getElementById("editId").value = id;
+
+        alert("Edit mode ON");
+    }
+
+    // CSV DOWNLOAD
+    function downloadCSV() {
+
+        if (systems.length === 0) {
+            alert("No data available");
+            return;
+        }
+
+        let csv = "ID,System,CPU (%),Memory (%),Disk (%)\n";
+
+        systems.forEach(s => {
+            csv += `${s.id},${s.systemName},${s.cpuUsage},${s.memoryUsage},${s.diskUsage}\n`;
+        });
+
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "system_report.csv";
+        a.click();
+    }
+
+    // LOAD DATA
+    function loadData() {
+        fetch(`http://localhost:8080/api/metrics`)
+        .then(res => res.json())
+        .then(data => {
+
+            systems = data;
+
+            let table = document.getElementById("tableBody");
+            let cpuAlert = document.getElementById("cpuAlert");
+            let memoryAlert = document.getElementById("memoryAlert");
+            let diskAlert = document.getElementById("diskAlert");
+
+            table.innerHTML = "";
+            cpuAlert.innerHTML = "";
+            memoryAlert.innerHTML = "";
+            diskAlert.innerHTML = "";
+
+            document.getElementById("totalCount").innerText = data.length;
+
+            let labels = [], cpu = [], mem = [], disk = [];
+
+            data.forEach(item => {
+
+                if (item.cpuUsage > 80) {
+                    cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
+                }
+
+                if (item.memoryUsage > 80) {
+                    memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
+                }
+
+                if (item.diskUsage > 80) {
+                    diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
+                }
+
+                let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
+                    ? "style='background:#ffcccc'" : "";
+
+                table.innerHTML += `
+                    <tr ${highlight}>
+                        <td>${item.id}</td>
+                        <td>${item.systemName}</td>
+                        <td>${item.cpuUsage}</td>
+                        <td>${item.memoryUsage}</td>
+                        <td>${item.diskUsage}</td>
+                        <td>
+                            <button onclick="editSystem(${item.id})">Edit</button>
+                            <button onclick="deleteSystem(${item.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+
+                labels.push(item.systemName);
+                cpu.push(item.cpuUsage);
+                mem.push(item.memoryUsage);
+                disk.push(item.diskUsage);
+            });
+
+            if (cpuChart) cpuChart.destroy();
+            cpuChart = new Chart(document.getElementById("cpuChart"), {
+                type: "bar",
+                data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
+                options: { scales: { y: { min: 0, max: 100 } } }
+            });
+
+            if (memoryChart) memoryChart.destroy();
+            memoryChart = new Chart(document.getElementById("memoryChart"), {
+                type: "bar",
+                data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
+                options: { scales: { y: { min: 0, max: 100 } } }
+            });
+
+            if (diskChart) diskChart.destroy();
+            diskChart = new Chart(document.getElementById("diskChart"), {
+                type: "bar",
+                data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
+                options: { scales: { y: { min: 0, max: 100 } } }
+            });
+
+        });
+    }
+
+    setInterval(loadData, 5000);
+    window.onload = loadData;
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Monitoring System</title>
+
+  <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+        height: 100vh;
+        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        overflow: hidden;
+    }
+
+    /* Floating background circles */
+    .circle {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+        animation: float 10s infinite ease-in-out;
+    }
+
+    .circle:nth-child(1) {
+        width: 200px;
+        height: 200px;
+        top: 10%;
+        left: 10%;
+    }
+
+    .circle:nth-child(2) {
+        width: 300px;
+        height: 300px;
+        bottom: 10%;
+        right: 10%;
+        animation-delay: 2s;
+    }
+
+    @keyframes float {
+        0%,100% { transform: translateY(0px); }
+        50% { transform: translateY(-30px); }
+    }
+
+    /* Glass card */
+    .card {
+        backdrop-filter: blur(15px);
+        background: rgba(255,255,255,0.1);
+        padding: 50px;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        animation: fadeIn 1.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+        font-size: 45px;
+        margin-bottom: 10px;
+    }
+
+    p {
+        font-size: 18px;
+        margin-bottom: 30px;
+        opacity: 0.9;
+    }
+
+    .btn {
+        padding: 15px 35px;
+        font-size: 18px;
+        border-radius: 30px;
+        border: none;
+        background: linear-gradient(45deg, #00c6ff, #0072ff);
+        color: white;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    .btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(0,114,255,0.6);
+    }
+
+    .features {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+        font-size: 15px;
+        opacity: 0.85;
+    }
+
+  </style>
+</head>
+
+<body>
+
+<!-- Background circles -->
+<div class="circle"></div>
+<div class="circle"></div>
+
+<!-- Main card -->
+<div class="card">
+  <h1>🚀 Monitoring System</h1>
+  <p>Real-time CPU, Memory & Disk Tracking Dashboard</p>
+
+  <button class="btn" onclick="goToDashboard()">Enter Dashboard</button>
+
+  <div class="features">
+    <div>📊 Live Charts</div>
+    <div>⚡ Real-Time</div>
+    <div>🚨 Alerts</div>
+  </div>
+</div>
+
+<script>
+  function goToDashboard() {
+      window.location.href = "dashboard.html";
+  }
+</script>
+
+</body>
+</html>
