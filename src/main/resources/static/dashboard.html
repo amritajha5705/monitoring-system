@@ -50,11 +50,34 @@
             loadData();
         }
 
+        // EDIT (RESTORED)
+        function editSystem(id) {
+
+            id = Number(id);
+
+            const s = systems.find(x => x.id === id);
+
+            if (!s) {
+                alert("System not found!");
+                return;
+            }
+
+            document.getElementById("systemName").value = s.systemName;
+            document.getElementById("cpu").value = s.cpuUsage;
+            document.getElementById("memory").value = s.memoryUsage;
+            document.getElementById("disk").value = s.diskUsage;
+
+            document.getElementById("editId").value = id;
+
+            alert("Edit mode ON");
+        }
+
         // LOAD DATA
         function loadData() {
             fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
             .then(res => res.json())
             .then(data => {
+
                 systems = data;
 
                 let table = document.getElementById("tableBody");
@@ -133,7 +156,7 @@
         }
 
         setInterval(loadData, 5000);
-        loadData(); // initial load
+        loadData();
 
     });
 </script>
