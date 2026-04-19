@@ -1,136 +1,139 @@
 <script>
-    let cpuChart, memoryChart, diskChart;
-    let systems = [];
+    document.addEventListener("DOMContentLoaded", function () {
 
-    // ADD / UPDATE
-    document.getElementById("dataForm").addEventListener("submit", async function(e) {
-        e.preventDefault();
+        let cpuChart, memoryChart, diskChart;
+        let systems = [];
 
-        const id = document.getElementById("editId").value;
+        // ADD / UPDATE
+        document.getElementById("dataForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
 
-        const data = {
-            systemName: document.getElementById("systemName").value,
-            cpuUsage: parseFloat(document.getElementById("cpu").value),
-            memoryUsage: parseFloat(document.getElementById("memory").value),
-            diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
-            timestamp: Date.now()
-        };
+            const id = document.getElementById("editId").value;
 
-        if (id) {
+            const data = {
+                systemName: document.getElementById("systemName").value,
+                cpuUsage: parseFloat(document.getElementById("cpu").value),
+                memoryUsage: parseFloat(document.getElementById("memory").value),
+                diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
+                timestamp: Date.now()
+            };
+
+            if (id) {
+                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+                alert("Updated successfully");
+            } else {
+                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+                alert("Added successfully");
+            }
+
+            document.getElementById("editId").value = "";
+            document.getElementById("dataForm").reset();
+            loadData();
+        });
+
+        // DELETE
+        async function deleteSystem(id) {
+            if (!confirm("Delete this system?")) return;
+
             await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
+                method: "DELETE"
             });
-            alert("Updated successfully");
-        } else {
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-            alert("Added successfully");
+
+            loadData();
         }
 
-        document.getElementById("editId").value = "";
-        document.getElementById("dataForm").reset();
-        loadData();
+        // LOAD DATA
+        function loadData() {
+            fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
+            .then(res => res.json())
+            .then(data => {
+                systems = data;
+
+                let table = document.getElementById("tableBody");
+                let cpuAlert = document.getElementById("cpuAlert");
+                let memoryAlert = document.getElementById("memoryAlert");
+                let diskAlert = document.getElementById("diskAlert");
+
+                table.innerHTML = "";
+                cpuAlert.innerHTML = "";
+                memoryAlert.innerHTML = "";
+                diskAlert.innerHTML = "";
+
+                document.getElementById("totalCount").innerText = data.length;
+
+                let labels = [], cpu = [], mem = [], disk = [];
+
+                data.forEach(item => {
+
+                    if (item.cpuUsage > 80) {
+                        cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
+                    }
+
+                    if (item.memoryUsage > 80) {
+                        memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
+                    }
+
+                    if (item.diskUsage > 80) {
+                        diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
+                    }
+
+                    let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
+                        ? "style='background:#ffcccc'" : "";
+
+                    table.innerHTML += `
+                        <tr ${highlight}>
+                            <td>${item.id}</td>
+                            <td>${item.systemName}</td>
+                            <td>${item.cpuUsage}</td>
+                            <td>${item.memoryUsage}</td>
+                            <td>${item.diskUsage}</td>
+                            <td>
+                                <button onclick="editSystem(${item.id})">Edit</button>
+                                <button onclick="deleteSystem(${item.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+
+                    labels.push(item.systemName);
+                    cpu.push(item.cpuUsage);
+                    mem.push(item.memoryUsage);
+                    disk.push(item.diskUsage);
+                });
+
+                if (cpuChart) cpuChart.destroy();
+                cpuChart = new Chart(document.getElementById("cpuChart"), {
+                    type: "bar",
+                    data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
+
+                if (memoryChart) memoryChart.destroy();
+                memoryChart = new Chart(document.getElementById("memoryChart"), {
+                    type: "bar",
+                    data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
+
+                if (diskChart) diskChart.destroy();
+                diskChart = new Chart(document.getElementById("diskChart"), {
+                    type: "bar",
+                    data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
+
+            });
+        }
+
+        setInterval(loadData, 5000);
+        loadData(); // initial load
+
     });
-
-    // DELETE
-    async function deleteSystem(id) {
-        if (!confirm("Delete this system?")) return;
-
-        await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-            method: "DELETE"
-        });
-
-        loadData();
-    }
-
-    // LOAD DATA
-    function loadData() {
-        fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
-        .then(res => res.json())
-        .then(data => {
-            systems = data;
-
-            let table = document.getElementById("tableBody");
-            let cpuAlert = document.getElementById("cpuAlert");
-            let memoryAlert = document.getElementById("memoryAlert");
-            let diskAlert = document.getElementById("diskAlert");
-
-            table.innerHTML = "";
-            cpuAlert.innerHTML = "";
-            memoryAlert.innerHTML = "";
-            diskAlert.innerHTML = "";
-
-            document.getElementById("totalCount").innerText = data.length;
-
-            let labels = [], cpu = [], mem = [], disk = [];
-
-            data.forEach(item => {
-
-                if (item.cpuUsage > 80) {
-                    cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-                }
-
-                if (item.memoryUsage > 80) {
-                    memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-                }
-
-                if (item.diskUsage > 80) {
-                    diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-                }
-
-                let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
-                    ? "style='background:#ffcccc'" : "";
-
-                table.innerHTML += `
-                    <tr ${highlight}>
-                        <td>${item.id}</td>
-                        <td>${item.systemName}</td>
-                        <td>${item.cpuUsage}</td>
-                        <td>${item.memoryUsage}</td>
-                        <td>${item.diskUsage}</td>
-                        <td>
-                            <button onclick="editSystem(${item.id})">Edit</button>
-                            <button onclick="deleteSystem(${item.id})">Delete</button>
-                        </td>
-                    </tr>
-                `;
-
-                labels.push(item.systemName);
-                cpu.push(item.cpuUsage);
-                mem.push(item.memoryUsage);
-                disk.push(item.diskUsage);
-            });
-
-            if (cpuChart) cpuChart.destroy();
-            cpuChart = new Chart(document.getElementById("cpuChart"), {
-                type: "bar",
-                data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
-                options: { scales: { y: { min: 0, max: 100 } } }
-            });
-
-            if (memoryChart) memoryChart.destroy();
-            memoryChart = new Chart(document.getElementById("memoryChart"), {
-                type: "bar",
-                data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
-                options: { scales: { y: { min: 0, max: 100 } } }
-            });
-
-            if (diskChart) diskChart.destroy();
-            diskChart = new Chart(document.getElementById("diskChart"), {
-                type: "bar",
-                data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
-                options: { scales: { y: { min: 0, max: 100 } } }
-            });
-
-        });
-    }
-
-    setInterval(loadData, 5000);
-    window.onload = loadData;
-
 </script>
