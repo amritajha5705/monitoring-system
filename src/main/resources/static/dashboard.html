@@ -102,17 +102,17 @@
 
              data.forEach(item => {
 
-                 if (item.cpuUsage > 80) {
-                     cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-                 }
+                 if (cpuAlert && item.cpuUsage > 80) {
+    cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
+}
 
-                 if (item.memoryUsage > 80) {
-                     memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-                 }
+if (memoryAlert && item.memoryUsage > 80) {
+    memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
+}
 
-                 if (item.diskUsage > 80) {
-                     diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-                 }
+if (diskAlert && item.diskUsage > 80) {
+    diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
+}
 
                  let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
                      ? "style='background:#ffcccc'" : "";
