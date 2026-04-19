@@ -91,11 +91,11 @@
 
              if (!table) return; // safety
 
-             table.innerHTML = "";
-             cpuAlert.innerHTML = "";
-             memoryAlert.innerHTML = "";
-             diskAlert.innerHTML = "";
+            table.innerHTML = "";
 
+       if (cpuAlert) cpuAlert.innerHTML = "";
+       if (memoryAlert) memoryAlert.innerHTML = "";
+       if (diskAlert) diskAlert.innerHTML = "";
              document.getElementById("totalCount").innerText = data.length;
 
              let labels = [], cpu = [], mem = [], disk = [];
