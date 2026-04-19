@@ -1,162 +1,169 @@
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
+ document.addEventListener("DOMContentLoaded", function () {
 
-        let cpuChart, memoryChart, diskChart;
-        let systems = [];
+     let cpuChart, memoryChart, diskChart;
+     let systems = [];
 
-        // ADD / UPDATE
-        document.getElementById("dataForm").addEventListener("submit", async function(e) {
-            e.preventDefault();
+     // SAFE FORM HANDLING
+     const form = document.getElementById("dataForm");
 
-            const id = document.getElementById("editId").value;
+     if (form) {
+         form.addEventListener("submit", async function(e) {
+             e.preventDefault();
 
-            const data = {
-                systemName: document.getElementById("systemName").value,
-                cpuUsage: parseFloat(document.getElementById("cpu").value),
-                memoryUsage: parseFloat(document.getElementById("memory").value),
-                diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
-                timestamp: Date.now()
-            };
+             const id = document.getElementById("editId").value;
 
-            if (id) {
-                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data)
-                });
-                alert("Updated successfully");
-            } else {
-                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data)
-                });
-                alert("Added successfully");
-            }
+             const data = {
+                 systemName: document.getElementById("systemName").value,
+                 cpuUsage: parseFloat(document.getElementById("cpu").value),
+                 memoryUsage: parseFloat(document.getElementById("memory").value),
+                 diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
+                 timestamp: Date.now()
+             };
 
-            document.getElementById("editId").value = "";
-            document.getElementById("dataForm").reset();
-            loadData();
-        });
+             if (id) {
+                 await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                     method: "PUT",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(data)
+                 });
+                 alert("Updated successfully");
+             } else {
+                 await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(data)
+                 });
+                 alert("Added successfully");
+             }
 
-        // DELETE
-        async function deleteSystem(id) {
-            if (!confirm("Delete this system?")) return;
+             document.getElementById("editId").value = "";
+             form.reset();
+             loadData();
+         });
+     }
 
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                method: "DELETE"
-            });
+     // DELETE
+     window.deleteSystem = async function(id) {
+         if (!confirm("Delete this system?")) return;
 
-            loadData();
-        }
+         await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+             method: "DELETE"
+         });
 
-        // EDIT (RESTORED)
-        function editSystem(id) {
+         loadData();
+     };
 
-            id = Number(id);
+     // EDIT (important: attached to window)
+     window.editSystem = function(id) {
 
-            const s = systems.find(x => x.id === id);
+         id = Number(id);
 
-            if (!s) {
-                alert("System not found!");
-                return;
-            }
+         const s = systems.find(x => x.id === id);
 
-            document.getElementById("systemName").value = s.systemName;
-            document.getElementById("cpu").value = s.cpuUsage;
-            document.getElementById("memory").value = s.memoryUsage;
-            document.getElementById("disk").value = s.diskUsage;
+         if (!s) {
+             alert("System not found!");
+             return;
+         }
 
-            document.getElementById("editId").value = id;
+         document.getElementById("systemName").value = s.systemName;
+         document.getElementById("cpu").value = s.cpuUsage;
+         document.getElementById("memory").value = s.memoryUsage;
+         document.getElementById("disk").value = s.diskUsage;
 
-            alert("Edit mode ON");
-        }
+         document.getElementById("editId").value = id;
 
-        // LOAD DATA
-        function loadData() {
-            fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
-            .then(res => res.json())
-            .then(data => {
+         alert("Edit mode ON");
+     };
 
-                systems = data;
+     // LOAD DATA
+     function loadData() {
+         fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
+         .then(res => res.json())
+         .then(data => {
 
-                let table = document.getElementById("tableBody");
-                let cpuAlert = document.getElementById("cpuAlert");
-                let memoryAlert = document.getElementById("memoryAlert");
-                let diskAlert = document.getElementById("diskAlert");
+             systems = data;
 
-                table.innerHTML = "";
-                cpuAlert.innerHTML = "";
-                memoryAlert.innerHTML = "";
-                diskAlert.innerHTML = "";
+             let table = document.getElementById("tableBody");
+             let cpuAlert = document.getElementById("cpuAlert");
+             let memoryAlert = document.getElementById("memoryAlert");
+             let diskAlert = document.getElementById("diskAlert");
 
-                document.getElementById("totalCount").innerText = data.length;
+             if (!table) return; // safety
 
-                let labels = [], cpu = [], mem = [], disk = [];
+             table.innerHTML = "";
+             cpuAlert.innerHTML = "";
+             memoryAlert.innerHTML = "";
+             diskAlert.innerHTML = "";
 
-                data.forEach(item => {
+             document.getElementById("totalCount").innerText = data.length;
 
-                    if (item.cpuUsage > 80) {
-                        cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-                    }
+             let labels = [], cpu = [], mem = [], disk = [];
 
-                    if (item.memoryUsage > 80) {
-                        memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-                    }
+             data.forEach(item => {
 
-                    if (item.diskUsage > 80) {
-                        diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-                    }
+                 if (item.cpuUsage > 80) {
+                     cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
+                 }
 
-                    let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
-                        ? "style='background:#ffcccc'" : "";
+                 if (item.memoryUsage > 80) {
+                     memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
+                 }
 
-                    table.innerHTML += `
-                        <tr ${highlight}>
-                            <td>${item.id}</td>
-                            <td>${item.systemName}</td>
-                            <td>${item.cpuUsage}</td>
-                            <td>${item.memoryUsage}</td>
-                            <td>${item.diskUsage}</td>
-                            <td>
-                                <button onclick="editSystem(${item.id})">Edit</button>
-                                <button onclick="deleteSystem(${item.id})">Delete</button>
-                            </td>
-                        </tr>
-                    `;
+                 if (item.diskUsage > 80) {
+                     diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
+                 }
 
-                    labels.push(item.systemName);
-                    cpu.push(item.cpuUsage);
-                    mem.push(item.memoryUsage);
-                    disk.push(item.diskUsage);
-                });
+                 let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
+                     ? "style='background:#ffcccc'" : "";
 
-                if (cpuChart) cpuChart.destroy();
-                cpuChart = new Chart(document.getElementById("cpuChart"), {
-                    type: "bar",
-                    data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
-                });
+                 table.innerHTML += `
+                     <tr ${highlight}>
+                         <td>${item.id}</td>
+                         <td>${item.systemName}</td>
+                         <td>${item.cpuUsage}</td>
+                         <td>${item.memoryUsage}</td>
+                         <td>${item.diskUsage}</td>
+                         <td>
+                             <button onclick="editSystem(${item.id})">Edit</button>
+                             <button onclick="deleteSystem(${item.id})">Delete</button>
+                         </td>
+                     </tr>
+                 `;
 
-                if (memoryChart) memoryChart.destroy();
-                memoryChart = new Chart(document.getElementById("memoryChart"), {
-                    type: "bar",
-                    data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
-                });
+                 labels.push(item.systemName);
+                 cpu.push(item.cpuUsage);
+                 mem.push(item.memoryUsage);
+                 disk.push(item.diskUsage);
+             });
 
-                if (diskChart) diskChart.destroy();
-                diskChart = new Chart(document.getElementById("diskChart"), {
-                    type: "bar",
-                    data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
-                });
+             if (cpuChart) cpuChart.destroy();
+             cpuChart = new Chart(document.getElementById("cpuChart"), {
+                 type: "bar",
+                 data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
+                 options: { scales: { y: { min: 0, max: 100 } } }
+             });
 
-            });
-        }
+             if (memoryChart) memoryChart.destroy();
+             memoryChart = new Chart(document.getElementById("memoryChart"), {
+                 type: "bar",
+                 data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
+                 options: { scales: { y: { min: 0, max: 100 } } }
+             });
 
-        setInterval(loadData, 5000);
-        loadData();
+             if (diskChart) diskChart.destroy();
+             diskChart = new Chart(document.getElementById("diskChart"), {
+                 type: "bar",
+                 data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
+                 options: { scales: { y: { min: 0, max: 100 } } }
+             });
 
-    });
+         })
+         .catch(err => console.error("Error:", err));
+     }
+
+     setInterval(loadData, 5000);
+     loadData();
+
+ });
 </script>
