@@ -1,64 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
- <meta charset="UTF-8">
- <title>Monitoring Dashboard</title>
+    <meta charset="UTF-8">
+    <title>Monitoring Dashboard</title>
 
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
- <style>
-  body {
-      font-family: Arial;
-      background: #111;
-      color: white;
-      text-align: center;
-  }
+    <style>
+        body {
+            font-family: Arial;
+            background: #111;
+            color: white;
+            text-align: center;
+        }
 
-  button {
-      padding: 8px 15px;
-      margin: 5px;
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-  }
+        button {
+            padding: 8px 15px;
+            margin: 5px;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-  table {
-      margin: 20px auto;
-      width: 85%;
-      border-collapse: collapse;
-      background: #222;
-  }
+        table {
+            margin: 20px auto;
+            width: 85%;
+            border-collapse: collapse;
+            background: #222;
+        }
 
-  th, td {
-      padding: 10px;
-      border: 1px solid #555;
-  }
+        th, td {
+            padding: 10px;
+            border: 1px solid #555;
+        }
 
-  th {
-      background: #333;
-  }
+        th {
+            background: #333;
+        }
 
-  .alertBox {
-      width: 60%;
-      margin: 10px auto;
-      padding: 10px;
-      border-radius: 6px;
-      text-align: left;
-  }
+        .alertBox {
+            width: 60%;
+            margin: 10px auto;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: left;
+        }
 
-  #cpuAlert { border-left: 5px solid red; background: #2a1a1a; }
-  #memoryAlert { border-left: 5px solid orange; background: #2a241a; }
-  #diskAlert { border-left: 5px solid purple; background: #241a2a; }
- </style>
+        #cpuAlert { border-left: 5px solid red; background: #2a1a1a; }
+        #memoryAlert { border-left: 5px solid orange; background: #2a241a; }
+        #diskAlert { border-left: 5px solid purple; background: #241a2a; }
+    </style>
 </head>
 
 <body>
 
 <h1>System Monitoring Dashboard</h1>
 
-<!-- ALERTS -->
 <div id="cpuAlert" class="alertBox"></div>
 <div id="memoryAlert" class="alertBox"></div>
 <div id="diskAlert" class="alertBox"></div>
@@ -66,17 +65,17 @@
 <h2>Total Systems: <span id="totalCount">0</span></h2>
 
 <table>
- <thead>
- <tr>
-  <th>ID</th>
-  <th>System</th>
-  <th>CPU</th>
-  <th>Memory</th>
-  <th>Disk</th>
-  <th>Actions</th>
- </tr>
- </thead>
- <tbody id="tableBody"></tbody>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>System</th>
+        <th>CPU</th>
+        <th>Memory</th>
+        <th>Disk</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
 </table>
 
 <canvas id="cpuChart"></canvas>
@@ -84,160 +83,126 @@
 <canvas id="diskChart"></canvas>
 
 <script>
- document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function () {
 
-     let cpuChart, memoryChart, diskChart;
-     let systems = [];
+        let cpuChart, memoryChart, diskChart;
+        let systems = [];
 
-     const form = document.getElementById("dataForm");
+        function loadData() {
+            fetch("https://monitoring-system-4dii.onrender.com/api/metrics")
+            .then(res => res.json())
+            .then(data => {
 
-     if (form) {
-         form.addEventListener("submit", async function(e) {
-             e.preventDefault();
+                console.log("API DATA:", data);
 
-             const id = document.getElementById("editId").value;
+                systems = data;
 
-             const data = {
-                 systemName: document.getElementById("systemName").value,
-                 cpuUsage: parseFloat(document.getElementById("cpu").value),
-                 memoryUsage: parseFloat(document.getElementById("memory").value),
-                 diskUsage: Math.min(parseFloat(document.getElementById("disk").value), 100),
-                 timestamp: Date.now()
-             };
+                const table = document.getElementById("tableBody");
+                const cpuAlert = document.getElementById("cpuAlert");
+                const memoryAlert = document.getElementById("memoryAlert");
+                const diskAlert = document.getElementById("diskAlert");
 
-             if (id) {
-                 await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                     method: "PUT",
-                     headers: { "Content-Type": "application/json" },
-                     body: JSON.stringify(data)
-                 });
-             } else {
-                 await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
-                     method: "POST",
-                     headers: { "Content-Type": "application/json" },
-                     body: JSON.stringify(data)
-                 });
-             }
+                if (!table) return;
 
-             form.reset();
-             loadData();
-         });
-     }
+                table.innerHTML = "";
+                cpuAlert.innerHTML = "";
+                memoryAlert.innerHTML = "";
+                diskAlert.innerHTML = "";
 
-     window.deleteSystem = async function(id) {
-         await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-             method: "DELETE"
-         });
-         loadData();
-     };
+                document.getElementById("totalCount").innerText = data.length;
 
-     window.editSystem = function(id) {
-         id = Number(id);
-         const s = systems.find(x => x.id === id);
-         if (!s) return;
+                let labels = [], cpu = [], mem = [], disk = [];
 
-         document.getElementById("systemName").value = s.systemName;
-         document.getElementById("cpu").value = s.cpuUsage;
-         document.getElementById("memory").value = s.memoryUsage;
-         document.getElementById("disk").value = s.diskUsage;
-         document.getElementById("editId").value = id;
-     };
+                data.forEach(item => {
 
-     function loadData() {
-         fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
-         .then(res => res.json())
-         .then(data => {
-         console.log("DATA FROM API:", data);
-             systems = data;
+                    // 🔥 FIX: handle ANY backend format
+                    const id = item.id || item._id;
+                    const name = item.systemName || item.system_name;
+                    const cpuVal = item.cpuUsage ?? item.cpu;
+                    const memVal = item.memoryUsage ?? item.memory;
+                    const diskVal = item.diskUsage ?? item.disk;
 
-             let table = document.getElementById("tableBody");
-             let cpuAlert = document.getElementById("cpuAlert");
-             let memoryAlert = document.getElementById("memoryAlert");
-             let diskAlert = document.getElementById("diskAlert");
+                    if (cpuVal > 80) {
+                        cpuAlert.innerHTML += `🔴 High CPU on ${name} (${cpuVal}%)<br>`;
+                    }
 
-             if (!table) {
-    console.error("Table not found!");
-    return;
-}
+                    if (memVal > 80) {
+                        memoryAlert.innerHTML += `🟠 High Memory on ${name} (${memVal}%)<br>`;
+                    }
 
-if (!cpuAlert) console.warn("cpuAlert missing");
-if (!memoryAlert) console.warn("memoryAlert missing");
-if (!diskAlert) console.warn("diskAlert missing");
+                    if (diskVal > 80) {
+                        diskAlert.innerHTML += `🟣 High Disk on ${name} (${diskVal}%)<br>`;
+                    }
 
-             table.innerHTML = "";
+                    let highlight = (cpuVal > 80 || memVal > 80 || diskVal > 80)
+                        ? "style='background:#ffcccc'" : "";
 
-             if (cpuAlert) cpuAlert.innerHTML = "";
-             if (memoryAlert) memoryAlert.innerHTML = "";
-             if (diskAlert) diskAlert.innerHTML = "";
+                    table.innerHTML += `
+                        <tr ${highlight}>
+                            <td>${id}</td>
+                            <td>${name}</td>
+                            <td>${cpuVal}</td>
+                            <td>${memVal}</td>
+                            <td>${diskVal}</td>
+                            <td>
+                                <button onclick="editSystem('${id}')">Edit</button>
+                                <button onclick="deleteSystem('${id}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
 
-             document.getElementById("totalCount").innerText = data.length;
+                    labels.push(name);
+                    cpu.push(cpuVal);
+                    mem.push(memVal);
+                    disk.push(diskVal);
+                });
 
-             let labels = [], cpu = [], mem = [], disk = [];
+                // Charts
+                if (cpuChart) cpuChart.destroy();
+                cpuChart = new Chart(document.getElementById("cpuChart"), {
+                    type: "bar",
+                    data: { labels, datasets: [{ label: "CPU", data: cpu }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
 
-             data.forEach(item => {
+                if (memoryChart) memoryChart.destroy();
+                memoryChart = new Chart(document.getElementById("memoryChart"), {
+                    type: "bar",
+                    data: { labels, datasets: [{ label: "Memory", data: mem }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
 
-                 if (cpuAlert && item.cpuUsage > 80) {
-                     cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-                 }
+                if (diskChart) diskChart.destroy();
+                diskChart = new Chart(document.getElementById("diskChart"), {
+                    type: "bar",
+                    data: { labels, datasets: [{ label: "Disk", data: disk }] },
+                    options: { scales: { y: { min: 0, max: 100 } } }
+                });
 
-                 if (memoryAlert && item.memoryUsage > 80) {
-                     memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-                 }
+            })
+            .catch(err => console.error("FETCH ERROR:", err));
+        }
 
-                 if (diskAlert && item.diskUsage > 80) {
-                     diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-                 }
+        // DELETE
+        window.deleteSystem = async function(id) {
+            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                method: "DELETE"
+            });
+            loadData();
+        };
 
-                 let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
-                     ? "style='background:#ffcccc'" : "";
+        // EDIT
+        window.editSystem = function(id) {
+            const s = systems.find(x => (x.id || x._id) == id);
+            if (!s) return;
 
-                 table.innerHTML += `
-                     <tr ${highlight}>
-                         <td>${item.id}</td>
-                         <td>${item.systemName}</td>
-                         <td>${item.cpuUsage}</td>
-                         <td>${item.memoryUsage}</td>
-                         <td>${item.diskUsage}</td>
-                         <td>
-                             <button onclick="editSystem(${item.id})">Edit</button>
-                             <button onclick="deleteSystem(${item.id})">Delete</button>
-                         </td>
-                     </tr>
-                 `;
+            alert("Edit feature depends on your form page");
+        };
 
-                 labels.push(item.systemName);
-                 cpu.push(item.cpuUsage);
-                 mem.push(item.memoryUsage);
-                 disk.push(item.diskUsage);
-             });
+        setInterval(loadData, 5000);
+        loadData();
 
-             if (cpuChart) cpuChart.destroy();
-             cpuChart = new Chart(document.getElementById("cpuChart"), {
-                 type: "bar",
-                 data: { labels: labels, datasets: [{ label: "CPU", data: cpu }] },
-                 options: { scales: { y: { min: 0, max: 100 } } }
-             });
-
-             if (memoryChart) memoryChart.destroy();
-             memoryChart = new Chart(document.getElementById("memoryChart"), {
-                 type: "bar",
-                 data: { labels: labels, datasets: [{ label: "Memory", data: mem }] },
-                 options: { scales: { y: { min: 0, max: 100 } } }
-             });
-
-             if (diskChart) diskChart.destroy();
-             diskChart = new Chart(document.getElementById("diskChart"), {
-                 type: "bar",
-                 data: { labels: labels, datasets: [{ label: "Disk", data: disk }] },
-                 options: { scales: { y: { min: 0, max: 100 } } }
-             });
-
-         });
-     }
-
-     setInterval(loadData, 5000);
-     loadData();
- });
+    });
 </script>
 
 </body>
