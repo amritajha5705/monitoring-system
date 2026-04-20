@@ -1,10 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="UTF-8">
+ <title>Monitoring Dashboard</title>
+
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+ <style>
+  body {
+      font-family: Arial;
+      background: #111;
+      color: white;
+      text-align: center;
+  }
+
+  button {
+      padding: 8px 15px;
+      margin: 5px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+  }
+
+  table {
+      margin: 20px auto;
+      width: 85%;
+      border-collapse: collapse;
+      background: #222;
+  }
+
+  th, td {
+      padding: 10px;
+      border: 1px solid #555;
+  }
+
+  th {
+      background: #333;
+  }
+
+  .alertBox {
+      width: 60%;
+      margin: 10px auto;
+      padding: 10px;
+      border-radius: 6px;
+      text-align: left;
+  }
+
+  #cpuAlert { border-left: 5px solid red; background: #2a1a1a; }
+  #memoryAlert { border-left: 5px solid orange; background: #2a241a; }
+  #diskAlert { border-left: 5px solid purple; background: #241a2a; }
+ </style>
+</head>
+
+<body>
+
+<h1>System Monitoring Dashboard</h1>
+
+<!-- ALERTS -->
+<div id="cpuAlert" class="alertBox"></div>
+<div id="memoryAlert" class="alertBox"></div>
+<div id="diskAlert" class="alertBox"></div>
+
+<h2>Total Systems: <span id="totalCount">0</span></h2>
+
+<table>
+ <thead>
+ <tr>
+  <th>ID</th>
+  <th>System</th>
+  <th>CPU</th>
+  <th>Memory</th>
+  <th>Disk</th>
+  <th>Actions</th>
+ </tr>
+ </thead>
+ <tbody id="tableBody"></tbody>
+</table>
+
+<canvas id="cpuChart"></canvas>
+<canvas id="memoryChart"></canvas>
+<canvas id="diskChart"></canvas>
+
 <script>
  document.addEventListener("DOMContentLoaded", function () {
 
      let cpuChart, memoryChart, diskChart;
      let systems = [];
 
-     // SAFE FORM HANDLING
      const form = document.getElementById("dataForm");
 
      if (form) {
@@ -27,56 +111,38 @@
                      headers: { "Content-Type": "application/json" },
                      body: JSON.stringify(data)
                  });
-                 alert("Updated successfully");
              } else {
                  await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
                      method: "POST",
                      headers: { "Content-Type": "application/json" },
                      body: JSON.stringify(data)
                  });
-                 alert("Added successfully");
              }
 
-             document.getElementById("editId").value = "";
              form.reset();
              loadData();
          });
      }
 
-     // DELETE
      window.deleteSystem = async function(id) {
-         if (!confirm("Delete this system?")) return;
-
          await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
              method: "DELETE"
          });
-
          loadData();
      };
 
-     // EDIT (important: attached to window)
      window.editSystem = function(id) {
-
          id = Number(id);
-
          const s = systems.find(x => x.id === id);
-
-         if (!s) {
-             alert("System not found!");
-             return;
-         }
+         if (!s) return;
 
          document.getElementById("systemName").value = s.systemName;
          document.getElementById("cpu").value = s.cpuUsage;
          document.getElementById("memory").value = s.memoryUsage;
          document.getElementById("disk").value = s.diskUsage;
-
          document.getElementById("editId").value = id;
-
-         alert("Edit mode ON");
      };
 
-     // LOAD DATA
      function loadData() {
          fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
          .then(res => res.json())
@@ -89,13 +155,14 @@
              let memoryAlert = document.getElementById("memoryAlert");
              let diskAlert = document.getElementById("diskAlert");
 
-             if (!table) return; // safety
+             if (!table) return;
 
-            table.innerHTML = "";
+             table.innerHTML = "";
 
-       if (cpuAlert) cpuAlert.innerHTML = "";
-       if (memoryAlert) memoryAlert.innerHTML = "";
-       if (diskAlert) diskAlert.innerHTML = "";
+             if (cpuAlert) cpuAlert.innerHTML = "";
+             if (memoryAlert) memoryAlert.innerHTML = "";
+             if (diskAlert) diskAlert.innerHTML = "";
+
              document.getElementById("totalCount").innerText = data.length;
 
              let labels = [], cpu = [], mem = [], disk = [];
@@ -103,16 +170,16 @@
              data.forEach(item => {
 
                  if (cpuAlert && item.cpuUsage > 80) {
-    cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-}
+                     cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
+                 }
 
-if (memoryAlert && item.memoryUsage > 80) {
-    memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-}
+                 if (memoryAlert && item.memoryUsage > 80) {
+                     memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
+                 }
 
-if (diskAlert && item.diskUsage > 80) {
-    diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-}
+                 if (diskAlert && item.diskUsage > 80) {
+                     diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
+                 }
 
                  let highlight = (item.cpuUsage > 80 || item.memoryUsage > 80 || item.diskUsage > 80)
                      ? "style='background:#ffcccc'" : "";
@@ -158,12 +225,13 @@ if (diskAlert && item.diskUsage > 80) {
                  options: { scales: { y: { min: 0, max: 100 } } }
              });
 
-         })
-         .catch(err => console.error("Error:", err));
+         });
      }
 
      setInterval(loadData, 5000);
      loadData();
-
  });
 </script>
+
+</body>
+</html>
