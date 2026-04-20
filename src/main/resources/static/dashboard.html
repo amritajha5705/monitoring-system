@@ -14,6 +14,13 @@
             text-align: center;
         }
 
+        form input {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 5px;
+            border: none;
+        }
+
         button {
             padding: 8px 15px;
             margin: 5px;
@@ -58,6 +65,22 @@
 
 <h1>System Monitoring Dashboard</h1>
 
+<!-- ✅ FORM (THIS WAS MISSING) -->
+<h3>Add / Update System</h3>
+<form id="dataForm">
+    <input type="hidden" id="editId">
+
+    <input type="text" id="systemName" placeholder="System Name" required>
+    <input type="number" id="cpu" placeholder="CPU %" required>
+    <input type="number" id="memory" placeholder="Memory %" required>
+    <input type="number" id="disk" placeholder="Disk %" required>
+
+    <button type="submit">Submit</button>
+</form>
+
+<button onclick="downloadCSV()">Download CSV</button>
+
+<!-- ALERTS -->
 <div id="cpuAlert" class="alertBox"></div>
 <div id="memoryAlert" class="alertBox"></div>
 <div id="diskAlert" class="alertBox"></div>
@@ -88,12 +111,64 @@
         let cpuChart, memoryChart, diskChart;
         let systems = [];
 
+        // ADD / UPDATE
+        document.getElementById("dataForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById("editId").value;
+
+            const data = {
+                systemName: document.getElementById("systemName").value,
+                cpuUsage: parseFloat(document.getElementById("cpu").value),
+                memoryUsage: parseFloat(document.getElementById("memory").value),
+                diskUsage: parseFloat(document.getElementById("disk").value)
+            };
+
+            if (id) {
+                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            } else {
+                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+            }
+
+            document.getElementById("editId").value = "";
+            document.getElementById("dataForm").reset();
+            loadData();
+        });
+
+        // DELETE
+        window.deleteSystem = async function(id) {
+            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                method: "DELETE"
+            });
+            loadData();
+        };
+
+        // EDIT
+        window.editSystem = function(id) {
+            const s = systems.find(x => x.id === id);
+            if (!s) return;
+
+            document.getElementById("systemName").value = s.systemName;
+            document.getElementById("cpu").value = s.cpuUsage;
+            document.getElementById("memory").value = s.memoryUsage;
+            document.getElementById("disk").value = s.diskUsage;
+
+            document.getElementById("editId").value = id;
+        };
+
+        // LOAD DATA
         function loadData() {
-            fetch("https://monitoring-system-4dii.onrender.com/api/metrics")
+            fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
             .then(res => res.json())
             .then(data => {
-
-                console.log("API DATA:", data);
 
                 systems = data;
 
@@ -101,8 +176,6 @@
                 const cpuAlert = document.getElementById("cpuAlert");
                 const memoryAlert = document.getElementById("memoryAlert");
                 const diskAlert = document.getElementById("diskAlert");
-
-                if (!table) return;
 
                 table.innerHTML = "";
                 cpuAlert.innerHTML = "";
@@ -115,93 +188,71 @@
 
                 data.forEach(item => {
 
-                    // 🔥 FIX: handle ANY backend format
-                    const id = item.id || item._id;
-                    const name = item.systemName || item.system_name;
-                    const cpuVal = item.cpuUsage ?? item.cpu;
-                    const memVal = item.memoryUsage ?? item.memory;
-                    const diskVal = item.diskUsage ?? item.disk;
+                    if (item.cpuUsage > 80)
+                        cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName}<br>`;
 
-                    if (cpuVal > 80) {
-                        cpuAlert.innerHTML += `🔴 High CPU on ${name} (${cpuVal}%)<br>`;
-                    }
+                    if (item.memoryUsage > 80)
+                        memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName}<br>`;
 
-                    if (memVal > 80) {
-                        memoryAlert.innerHTML += `🟠 High Memory on ${name} (${memVal}%)<br>`;
-                    }
-
-                    if (diskVal > 80) {
-                        diskAlert.innerHTML += `🟣 High Disk on ${name} (${diskVal}%)<br>`;
-                    }
-
-                    let highlight = (cpuVal > 80 || memVal > 80 || diskVal > 80)
-                        ? "style='background:#ffcccc'" : "";
+                    if (item.diskUsage > 80)
+                        diskAlert.innerHTML += `🟣 High Disk on ${item.systemName}<br>`;
 
                     table.innerHTML += `
-                        <tr ${highlight}>
-                            <td>${id}</td>
-                            <td>${name}</td>
-                            <td>${cpuVal}</td>
-                            <td>${memVal}</td>
-                            <td>${diskVal}</td>
-                            <td>
-                                <button onclick="editSystem('${id}')">Edit</button>
-                                <button onclick="deleteSystem('${id}')">Delete</button>
-                            </td>
-                        </tr>
-                    `;
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.systemName}</td>
+                        <td>${item.cpuUsage}</td>
+                        <td>${item.memoryUsage}</td>
+                        <td>${item.diskUsage}</td>
+                        <td>
+                            <button onclick="editSystem(${item.id})">Edit</button>
+                            <button onclick="deleteSystem(${item.id})">Delete</button>
+                        </td>
+                    </tr>`;
 
-                    labels.push(name);
-                    cpu.push(cpuVal);
-                    mem.push(memVal);
-                    disk.push(diskVal);
+                    labels.push(item.systemName);
+                    cpu.push(item.cpuUsage);
+                    mem.push(item.memoryUsage);
+                    disk.push(item.diskUsage);
                 });
 
-                // Charts
                 if (cpuChart) cpuChart.destroy();
                 cpuChart = new Chart(document.getElementById("cpuChart"), {
                     type: "bar",
-                    data: { labels, datasets: [{ label: "CPU", data: cpu }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
+                    data: { labels, datasets: [{ label: "CPU", data: cpu }] }
                 });
 
                 if (memoryChart) memoryChart.destroy();
                 memoryChart = new Chart(document.getElementById("memoryChart"), {
                     type: "bar",
-                    data: { labels, datasets: [{ label: "Memory", data: mem }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
+                    data: { labels, datasets: [{ label: "Memory", data: mem }] }
                 });
 
                 if (diskChart) diskChart.destroy();
                 diskChart = new Chart(document.getElementById("diskChart"), {
                     type: "bar",
-                    data: { labels, datasets: [{ label: "Disk", data: disk }] },
-                    options: { scales: { y: { min: 0, max: 100 } } }
+                    data: { labels, datasets: [{ label: "Disk", data: disk }] }
                 });
 
-            })
-            .catch(err => console.error("FETCH ERROR:", err));
+            });
         }
 
-        // DELETE
-        window.deleteSystem = async function(id) {
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                method: "DELETE"
+        // CSV
+        window.downloadCSV = function() {
+            let csv = "ID,System,CPU,Memory,Disk\n";
+            systems.forEach(s => {
+                csv += `${s.id},${s.systemName},${s.cpuUsage},${s.memoryUsage},${s.diskUsage}\n`;
             });
-            loadData();
-        };
 
-        // EDIT
-        window.editSystem = function(id) {
-            const s = systems.find(x => (x.id || x._id) == id);
-            if (!s) return;
-
-            alert("Edit feature depends on your form page");
+            const blob = new Blob([csv], { type: "text/csv" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "data.csv";
+            a.click();
         };
 
         setInterval(loadData, 5000);
         loadData();
-
     });
 </script>
 
