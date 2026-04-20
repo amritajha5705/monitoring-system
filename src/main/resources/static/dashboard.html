@@ -147,7 +147,7 @@
          fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
          .then(res => res.json())
          .then(data => {
-
+         console.log("DATA FROM API:", data);
              systems = data;
 
              let table = document.getElementById("tableBody");
@@ -155,7 +155,14 @@
              let memoryAlert = document.getElementById("memoryAlert");
              let diskAlert = document.getElementById("diskAlert");
 
-             if (!table) return;
+             if (!table) {
+    console.error("Table not found!");
+    return;
+}
+
+if (!cpuAlert) console.warn("cpuAlert missing");
+if (!memoryAlert) console.warn("memoryAlert missing");
+if (!diskAlert) console.warn("diskAlert missing");
 
              table.innerHTML = "";
 
