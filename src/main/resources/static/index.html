@@ -2,269 +2,117 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Monitoring Dashboard</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Monitoring System</title>
 
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
         body {
-            font-family: Arial;
-            background: #111;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            display: flex;
+            justify-content: center;
+            align-items: center;
             color: white;
+            overflow: hidden;
+        }
+
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            animation: float 10s infinite ease-in-out;
+        }
+
+        .circle:nth-child(1) {
+            width: 200px;
+            height: 200px;
+            top: 10%;
+            left: 10%;
+        }
+
+        .circle:nth-child(2) {
+            width: 300px;
+            height: 300px;
+            bottom: 10%;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        @keyframes float {
+            0%,100% { transform: translateY(0px); }
+            50% { transform: translateY(-30px); }
+        }
+
+        .card {
+            backdrop-filter: blur(15px);
+            background: rgba(255,255,255,0.1);
+            padding: 50px;
+            border-radius: 20px;
             text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
         }
 
-        /* FORM */
-        form input {
-            padding: 8px;
-            margin: 5px;
-            border-radius: 5px;
+        h1 {
+            font-size: 45px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 35px;
+            font-size: 18px;
+            border-radius: 30px;
             border: none;
-        }
-
-        button {
-            padding: 8px 15px;
-            margin: 5px;
-            background: #444;
+            background: linear-gradient(45deg, #00c6ff, #0072ff);
             color: white;
-            border: none;
-            border-radius: 5px;
             cursor: pointer;
         }
 
-        table {
-            margin: 20px auto;
-            width: 85%;
-            border-collapse: collapse;
-            background: #222;
+        .btn:hover {
+            transform: scale(1.1);
         }
 
-        th, td {
-            padding: 10px;
-            border: 1px solid #555;
+        .features {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 25px;
         }
-
-        th {
-            background: #333;
-        }
-
-        .alertBox {
-            width: 60%;
-            margin: 10px auto;
-            padding: 10px;
-            border-radius: 6px;
-            text-align: left;
-        }
-
-        #cpuAlert { border-left: 5px solid red; background: #2a1a1a; }
-        #memoryAlert { border-left: 5px solid orange; background: #2a241a; }
-        #diskAlert { border-left: 5px solid purple; background: #241a2a; }
     </style>
 </head>
 
 <body>
 
-<h1>System Monitoring Dashboard</h1>
+<div class="circle"></div>
+<div class="circle"></div>
 
-<!-- FORM -->
-<h3>Add / Update System</h3>
-<form id="dataForm">
-    <input type="hidden" id="editId">
+<div class="card">
+    <h1>🚀 Monitoring System</h1>
+    <p>Real-time CPU, Memory & Disk Tracking Dashboard</p>
 
-    <input type="text" id="systemName" placeholder="System Name" required>
-    <input type="number" id="cpu" placeholder="CPU %" required>
-    <input type="number" id="memory" placeholder="Memory %" required>
-    <input type="number" id="disk" placeholder="Disk %" required>
+    <button class="btn" onclick="goToDashboard()">Enter Dashboard</button>
 
-    <button type="submit">Submit</button>
-</form>
-
-<button onclick="downloadCSV()">Download CSV</button>
-
-<!-- ALERTS -->
-<div id="cpuAlert" class="alertBox"></div>
-<div id="memoryAlert" class="alertBox"></div>
-<div id="diskAlert" class="alertBox"></div>
-
-<h2>Total Systems: <span id="totalCount">0</span></h2>
-
-<table>
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>System</th>
-        <th>CPU</th>
-        <th>Memory</th>
-        <th>Disk</th>
-        <th>Actions</th>
-    </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-</table>
-
-<canvas id="cpuChart"></canvas>
-<canvas id="memoryChart"></canvas>
-<canvas id="diskChart"></canvas>
+    <div class="features">
+        <div>📊 Charts</div>
+        <div>⚡ Real-Time</div>
+        <div>🚨 Alerts</div>
+    </div>
+</div>
 
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-
-    let cpuChart, memoryChart, diskChart;
-    let systems = [];
-
-    /* ADD / UPDATE */
-    document.getElementById("dataForm").addEventListener("submit", async function(e) {
-        e.preventDefault();
-
-        const id = document.getElementById("editId").value;
-
-        const data = {
-            systemName: document.getElementById("systemName").value,
-            cpuUsage: parseFloat(document.getElementById("cpu").value),
-            memoryUsage: parseFloat(document.getElementById("memory").value),
-            diskUsage: parseFloat(document.getElementById("disk").value)
-        };
-
-        if (id) {
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-            alert("Updated");
-        } else {
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data)
-            });
-            alert("Added");
-        }
-
-        document.getElementById("editId").value = "";
-        document.getElementById("dataForm").reset();
-        loadData();
-    });
-
-    /* DELETE */
-    window.deleteSystem = async function(id) {
-        if (!confirm("Delete this system?")) return;
-
-        await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
-            method: "DELETE"
-        });
-
-        loadData();
-    };
-
-    /* EDIT */
-    window.editSystem = function(id) {
-        const s = systems.find(x => x.id === id);
-        if (!s) return;
-
-        document.getElementById("systemName").value = s.systemName;
-        document.getElementById("cpu").value = s.cpuUsage;
-        document.getElementById("memory").value = s.memoryUsage;
-        document.getElementById("disk").value = s.diskUsage;
-
-        document.getElementById("editId").value = id;
-    };
-
-    /* LOAD DATA */
-    function loadData() {
-        fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
-        .then(res => res.json())
-        .then(data => {
-
-            systems = data;
-
-            const table = document.getElementById("tableBody");
-            const cpuAlert = document.getElementById("cpuAlert");
-            const memoryAlert = document.getElementById("memoryAlert");
-            const diskAlert = document.getElementById("diskAlert");
-
-            table.innerHTML = "";
-            cpuAlert.innerHTML = "";
-            memoryAlert.innerHTML = "";
-            diskAlert.innerHTML = "";
-
-            document.getElementById("totalCount").innerText = data.length;
-
-            let labels = [], cpu = [], mem = [], disk = [];
-
-            data.forEach(item => {
-
-                if (item.cpuUsage > 80)
-                    cpuAlert.innerHTML += `🔴 High CPU on ${item.systemName} (${item.cpuUsage}%)<br>`;
-
-                if (item.memoryUsage > 80)
-                    memoryAlert.innerHTML += `🟠 High Memory on ${item.systemName} (${item.memoryUsage}%)<br>`;
-
-                if (item.diskUsage > 80)
-                    diskAlert.innerHTML += `🟣 High Disk on ${item.systemName} (${item.diskUsage}%)<br>`;
-
-                table.innerHTML += `
-                <tr>
-                    <td>${item.id}</td>
-                    <td>${item.systemName}</td>
-                    <td>${item.cpuUsage}</td>
-                    <td>${item.memoryUsage}</td>
-                    <td>${item.diskUsage}</td>
-                    <td>
-                        <button onclick="editSystem(${item.id})">Edit</button>
-                        <button onclick="deleteSystem(${item.id})">Delete</button>
-                    </td>
-                </tr>
-                `;
-
-                labels.push(item.systemName);
-                cpu.push(item.cpuUsage);
-                mem.push(item.memoryUsage);
-                disk.push(item.diskUsage);
-            });
-
-            if (cpuChart) cpuChart.destroy();
-            cpuChart = new Chart(document.getElementById("cpuChart"), {
-                type: "bar",
-                data: { labels, datasets: [{ label: "CPU", data: cpu }] }
-            });
-
-            if (memoryChart) memoryChart.destroy();
-            memoryChart = new Chart(document.getElementById("memoryChart"), {
-                type: "bar",
-                data: { labels, datasets: [{ label: "Memory", data: mem }] }
-            });
-
-            if (diskChart) diskChart.destroy();
-            diskChart = new Chart(document.getElementById("diskChart"), {
-                type: "bar",
-                data: { labels, datasets: [{ label: "Disk", data: disk }] }
-            });
-
-        });
+    function goToDashboard() {
+        window.location.href = "dashboard.html";
     }
-
-    /* CSV DOWNLOAD */
-    window.downloadCSV = function() {
-        let csv = "ID,System,CPU,Memory,Disk\n";
-
-        systems.forEach(s => {
-            csv += `${s.id},${s.systemName},${s.cpuUsage},${s.memoryUsage},${s.diskUsage}\n`;
-        });
-
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = window.URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "system_data.csv";
-        a.click();
-    };
-
-    setInterval(loadData, 5000);
-    loadData();
-
-    });
 </script>
 
 </body>
