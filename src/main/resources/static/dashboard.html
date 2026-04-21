@@ -125,13 +125,13 @@
             };
 
             if (id) {
-                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+                await fetch(`/api/metrics/${id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(data)
                 });
             } else {
-                await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`, {
+                await fetch(`/api/metrics`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(data)
@@ -145,7 +145,7 @@
 
         // DELETE
         window.deleteSystem = async function(id) {
-            await fetch(`https://monitoring-system-4dii.onrender.com/api/metrics/${id}`, {
+            await fetch(`/api/metrics/${id}`, {
                 method: "DELETE"
             });
             loadData();
@@ -166,7 +166,7 @@
 
         // LOAD DATA
         function loadData() {
-            fetch(`https://monitoring-system-4dii.onrender.com/api/metrics`)
+            fetch(`/api/metrics`)
             .then(res => res.json())
             .then(data => {
 
